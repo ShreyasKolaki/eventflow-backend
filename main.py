@@ -11,13 +11,12 @@ app = FastAPI()
 # -------------------------------
 # CORS CONFIGURATION (IMPORTANT)
 # -------------------------------
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite local
-        "http://localhost:3000",  # React local (if used)
-        "eventflow-frontend-eta.vercel.app",  # replace with your real Vercel URL later
-        "*"  # temporary allow all (you can restrict later)
+        "https://eventflow-frontend-eta.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -8,7 +8,7 @@ load_dotenv()
 
 app = FastAPI()
 
-# ✅ CORS CONFIGURATION (VERY IMPORTANT)
+# ✅ CORS (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -22,21 +22,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ MongoDB connection
+# ✅ MongoDB
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client["users"]
 users_collection = db["user"]
 
-# --------------------------------
-# Home
-# --------------------------------
+
+# ✅ TEST ROUTE
 @app.get("/")
 def home():
-    return {"message": "Backend is working 🚀"}
+    return {"message": "Backend running successfully"}
 
-# --------------------------------
-# Register
-# --------------------------------
+
+# ✅ REGISTER
 @app.post("/register")
 def register_user(user: dict):
 
@@ -66,9 +64,8 @@ def register_user(user: dict):
 
     return {"message": "User registered successfully"}
 
-# --------------------------------
-# Login
-# --------------------------------
+
+# ✅ LOGIN (FIXED VERSION)
 @app.post("/login")
 def login_user(user: dict):
 
@@ -78,27 +75,26 @@ def login_user(user: dict):
     if not email_or_username or not password:
         return {"message": "All fields required"}
 
-    existing_user = users_collection.find_one({
+    user_data = users_collection.find_one({
         "$or": [
             {"email": email_or_username},
             {"username": email_or_username}
         ]
     })
 
-    if not existing_user:
+    if user_data is None:
         return {"message": "Invalid credentials"}
 
-    if existing_user["password"] != password:
+    if user_data["password"] != password:
         return {"message": "Invalid credentials"}
 
     return {
         "message": "Login successful",
-        "username": existing_user["username"]
+        "username": user_data["username"]
     }
 
-# --------------------------------
-# Events
-# --------------------------------
+
+# ✅ EVENTS
 @app.get("/events")
 def get_events():
     return {
@@ -107,17 +103,13 @@ def get_events():
         "tech": ["Hackathon", "Debugging", "Coding Contest"]
     }
 
-# --------------------------------
-# Register Event
-# --------------------------------
+
+# ✅ REGISTER EVENT
 @app.post("/register-event")
 def register_event(data: dict):
 
     username = data.get("username", "").strip()
     event = data.get("event", "").strip()
-
-    if not username or not event:
-        return {"message": "Missing data"}
 
     user = users_collection.find_one({"username": username})
 
@@ -132,16 +124,15 @@ def register_event(data: dict):
         {"$push": {"registered_events": event}}
     )
 
-    return {"message": f"Registered for {event}"}
+    return {"message": "Event registered successfully"}
 
-# --------------------------------
-# Profile
-# --------------------------------
+
+# ✅ PROFILE
 @app.get("/profile/{username}")
 def profile(username: str):
 
     user = users_collection.find_one(
-        {"username": username},
+        {"username": username.strip()},
         {"_id": 0, "password": 0}
     )
 

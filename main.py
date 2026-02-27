@@ -9,14 +9,14 @@ load_dotenv()
 app = FastAPI()
 
 # -------------------------------
-# CORS CONFIGURATION (IMPORTANT)
+# CORS CONFIGURATION
 # -------------------------------
-from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://eventflow-frontend-eta.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -43,9 +43,9 @@ def home():
 @app.post("/register")
 def register_user(user: dict):
 
-    email = user.get("email")
-    username = user.get("username")
-    password = user.get("password")
+    email = user.get("email", "").strip()
+    username = user.get("username", "").strip()
+    password = user.get("password", "").strip()
 
     if not email or not username or not password:
         return {"message": "All fields required"}
@@ -77,27 +77,31 @@ def register_user(user: dict):
 @app.post("/login")
 def login_user(user: dict):
 
-    email_or_username = user.get("email_or_username")
-    password = user.get("password")
+    email_or_username = user.get("email_or_username", "").strip()
+    password = user.get("password", "").strip()
 
     if not email_or_username or not password:
         return {"message": "All fields required"}
 
+    # find user by email OR username
     existing_user = users_collection.find_one({
         "$or": [
             {"email": email_or_username},
             {"username": email_or_username}
-        ],
-        "password": password
+        ]
     })
 
-    if existing_user:
-        return {
-            "message": "Login successful",
-            "username": existing_user["username"]
-        }
+    if not existing_user:
+        return {"message": "Invalid credentials"}
 
-    return {"message": "Invalid credentials"}
+    # check password manually
+    if existing_user["password"] != password:
+        return {"message": "Invalid credentials"}
+
+    return {
+        "message": "Login successful",
+        "username": existing_user["username"]
+    }
 
 # -------------------------------
 # Get All Events
@@ -117,15 +121,18 @@ def get_events():
 @app.post("/register-event")
 def register_event(data: dict):
 
-    username = data.get("username")
-    event = data.get("event")
+    username = data.get("username", "").strip()
+    event = data.get("event", "").strip()
+
+    if not username or not event:
+        return {"message": "Missing data"}
 
     user = users_collection.find_one({"username": username})
 
     if not user:
         return {"message": "User not found"}
 
-    if event in user["registered_events"]:
+    if event in user.get("registered_events", []):
         return {"message": "Already registered for this event"}
 
     users_collection.update_one(
@@ -140,6 +147,8 @@ def register_event(data: dict):
 # -------------------------------
 @app.get("/profile/{username}")
 def get_profile(username: str):
+
+    username = username.strip()
 
     user = users_collection.find_one(
         {"username": username},

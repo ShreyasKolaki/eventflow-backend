@@ -8,13 +8,12 @@ load_dotenv()
 
 app = FastAPI()
 
-# -------------------------------
-# CORS CONFIGURATION
-# -------------------------------
+# ✅ CORS CONFIGURATION (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://eventflow-frontend-eta.vercel.app",
+        "https://eventflow-frontend-b6mz52bje-shreyaskolakis-projects.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
     ],
@@ -23,23 +22,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------
-# MongoDB connection
-# -------------------------------
+# ✅ MongoDB connection
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client["users"]
 users_collection = db["user"]
 
-# -------------------------------
+# --------------------------------
 # Home
-# -------------------------------
+# --------------------------------
 @app.get("/")
 def home():
     return {"message": "Backend is working 🚀"}
 
-# -------------------------------
-# Register User
-# -------------------------------
+# --------------------------------
+# Register
+# --------------------------------
 @app.post("/register")
 def register_user(user: dict):
 
@@ -60,20 +57,18 @@ def register_user(user: dict):
     if existing_user:
         return {"message": "User already exists"}
 
-    user_data = {
+    users_collection.insert_one({
         "email": email,
         "username": username,
         "password": password,
         "registered_events": []
-    }
-
-    users_collection.insert_one(user_data)
+    })
 
     return {"message": "User registered successfully"}
 
-# -------------------------------
-# Login User
-# -------------------------------
+# --------------------------------
+# Login
+# --------------------------------
 @app.post("/login")
 def login_user(user: dict):
 
@@ -83,7 +78,6 @@ def login_user(user: dict):
     if not email_or_username or not password:
         return {"message": "All fields required"}
 
-    # find user by email OR username
     existing_user = users_collection.find_one({
         "$or": [
             {"email": email_or_username},
@@ -94,7 +88,6 @@ def login_user(user: dict):
     if not existing_user:
         return {"message": "Invalid credentials"}
 
-    # check password manually
     if existing_user["password"] != password:
         return {"message": "Invalid credentials"}
 
@@ -103,21 +96,20 @@ def login_user(user: dict):
         "username": existing_user["username"]
     }
 
-# -------------------------------
-# Get All Events
-# -------------------------------
+# --------------------------------
+# Events
+# --------------------------------
 @app.get("/events")
 def get_events():
-
     return {
         "sports": ["Cricket", "Football", "Basketball"],
         "cultural": ["Dance", "Drama", "Singing"],
         "tech": ["Hackathon", "Debugging", "Coding Contest"]
     }
 
-# -------------------------------
-# Register for Event
-# -------------------------------
+# --------------------------------
+# Register Event
+# --------------------------------
 @app.post("/register-event")
 def register_event(data: dict):
 
@@ -133,7 +125,7 @@ def register_event(data: dict):
         return {"message": "User not found"}
 
     if event in user.get("registered_events", []):
-        return {"message": "Already registered for this event"}
+        return {"message": "Already registered"}
 
     users_collection.update_one(
         {"username": username},
@@ -142,13 +134,11 @@ def register_event(data: dict):
 
     return {"message": f"Registered for {event}"}
 
-# -------------------------------
-# Profile Page
-# -------------------------------
+# --------------------------------
+# Profile
+# --------------------------------
 @app.get("/profile/{username}")
-def get_profile(username: str):
-
-    username = username.strip()
+def profile(username: str):
 
     user = users_collection.find_one(
         {"username": username},
